@@ -271,24 +271,6 @@ async def send_night_message(context: ContextTypes.DEFAULT_TYPE) -> None:
                 logger.error(f"Failed to send message to {user_id}: {e}")
 
 
-async def setup_jobs(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Set up scheduled jobs for sending messages."""
-    # Morning job at 7:00 AM UTC
-    context.job_queue.run_daily(
-        send_morning_message,
-        time=time(hour=7, minute=0),
-        name='morning_job'
-    )
-    
-    # Night job at 9:00 PM UTC
-    context.job_queue.run_daily(
-        send_night_message,
-        time=time(hour=21, minute=0),
-        name='night_job'
-    )
-    
-    logger.info("Jobs scheduled: Morning (7:00 AM) and Night (9:00 PM) UTC")
-
 
 def main() -> None:
     """Start the bot."""
@@ -301,15 +283,25 @@ def main() -> None:
     
     # Add handlers
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('settings', settings_menu))
     application.add_handler(CallbackQueryHandler(button_callback))
-    application.add_handler(application.add_handler(CommandHandler('settings', settings_menu)))
     
     # Add text handler for settings input
     from telegram.ext import MessageHandler, filters
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
-    # Set up scheduled jobs
-    application.post_init = setup_jobs
+    # Set up job queue for scheduled messages
+    application.job_queue.run_daily(
+        send_morning_message,
+        time=time(hour=7, minute=0),
+        name='morning_job'
+    )
+    
+    application.job_queue.run_daily(
+        send_night_message,
+        time=time(hour=21, minute=0),
+        name='night_job'
+    )
     
     # Run the bot
     application.run_polling()
